@@ -1,4 +1,4 @@
-package com.example.nba_game_day
+package com.yago.nba_game_day
 
 import io.flutter.embedding.android.FlutterActivity
 

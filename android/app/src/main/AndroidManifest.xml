@@ -1,6 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Necessária para consultar a ESPN no build de release (no debug o Flutter já a inclui). -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
     <application
-        android:label="nba_game_day"
+        android:label="NBA Game Day"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
