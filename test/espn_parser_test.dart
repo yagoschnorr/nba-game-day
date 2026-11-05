@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:nba_game_day/data/espn_api.dart';
 import 'package:nba_game_day/models/jogo.dart';
+import 'package:nba_game_day/utils/datas.dart';
 
 // Fixtures reais (ver docs/espn_formato.md):
 //   espn_scoreboard.json            dates=20261102, 15 jogos encerrados
@@ -18,10 +19,6 @@ Map<String, dynamic> jsonFixture(String nome) =>
     jsonDecode(lerFixture(nome)) as Map<String, dynamic>;
 
 Jogo porId(List<Jogo> jogos, String id) => jogos.singleWhere((j) => j.id == id);
-
-/// Os exemplos "calculados à mão" assumem o horário de Brasília (UTC−3).
-final foraDeBrasilia =
-    DateTime(2026, 11, 3).timeZoneOffset != const Duration(hours: -3);
 
 void main() {
   group('jogos encerrados (espn_scoreboard.json)', () {
@@ -57,22 +54,21 @@ void main() {
       expect(jogo.destaque, isFalse);
     });
 
-    test('guarda a data em horário local, representando o instante UTC', () {
+    test('guarda a data como o instante UTC da ESPN', () {
       final jogo = porId(jogos, '401909907'); // "2026-11-03T00:00Z"
-      expect(jogo.dataHora.isUtc, isFalse);
-      expect(jogo.dataHora.toUtc(), DateTime.utc(2026, 11, 3, 0, 0));
+      expect(jogo.dataHora, DateTime.utc(2026, 11, 3, 0, 0));
     });
 
     test('converte para Brasília conforme a conta feita à mão', () {
       // OKC @ CLE: 2026-11-03T00:00Z − 3 h = 02/11 às 21h.
-      final okc = porId(jogos, '401909907').dataHora;
+      final okc = emBrasilia(porId(jogos, '401909907').dataHora);
       expect([okc.day, okc.month, okc.hour, okc.minute], [2, 11, 21, 0]);
 
       // MIA @ LAL: 2026-11-03T03:00Z − 3 h = 03/11 à 0h. É do dia
       // americano 02/11, mas no Brasil cai na madrugada do dia seguinte.
-      final mia = porId(jogos, '401909921').dataHora;
+      final mia = emBrasilia(porId(jogos, '401909921').dataHora);
       expect([mia.day, mia.month, mia.hour, mia.minute], [3, 11, 0, 0]);
-    }, skip: foraDeBrasilia ? 'a máquina não está no fuso de Brasília' : false);
+    });
   });
 
   group('jogos agendados (espn_scoreboard_agendados.json)', () {
@@ -187,13 +183,31 @@ void main() {
     });
 
     test('consulta de ontem até depois de amanhã', () {
-      final dias = EspnApi.diasParaConsultar(DateTime(2026, 11, 1, 22, 15));
+      final dias = EspnApi.diasParaConsultar(DateTime.utc(2026, 11, 1, 15));
       expect(dias, [
         DateTime(2026, 10, 31),
         DateTime(2026, 11, 1),
         DateTime(2026, 11, 2),
         DateTime(2026, 11, 3),
       ]);
+    });
+
+    test('o período consulta também o dia americano anterior', () {
+      final dias = EspnApi.diasDoPeriodo((
+        inicio: diaDeBrasilia(2026, 11, 30),
+        fim: diaDeBrasilia(2026, 12, 1),
+      ));
+      expect(dias, [
+        DateTime(2026, 11, 29),
+        DateTime(2026, 11, 30),
+        DateTime(2026, 12, 1),
+      ]);
+    });
+
+    test('o "hoje" da consulta é o de Brasília, não o de UTC', () {
+      // 02/11 à 1h em UTC ainda é 01/11 às 22h em Brasília.
+      final dias = EspnApi.diasParaConsultar(DateTime.utc(2026, 11, 2, 1));
+      expect(dias[1], DateTime(2026, 11, 1));
     });
 
     test('uma falha não derruba os outros dias', () async {

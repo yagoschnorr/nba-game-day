@@ -7,6 +7,7 @@ import 'package:http/testing.dart';
 import 'package:nba_game_day/data/espn_api.dart';
 import 'package:nba_game_day/data/jogos_repository.dart';
 import 'package:nba_game_day/models/jogo.dart';
+import 'package:nba_game_day/utils/datas.dart';
 
 http.Response respostaFixture(String nome) => http.Response.bytes(
   utf8.encode(File('test/fixtures/$nome').readAsStringSync()),
@@ -44,12 +45,9 @@ JogosRepository criarRepositorio(
   forcarMock: forcarMock,
 );
 
-final foraDeBrasilia =
-    DateTime(2026, 11, 3).timeZoneOffset != const Duration(hours: -3);
-
 void main() {
   // Dias consultados com "agora" em 02/11: 01/11, 02/11, 03/11 e 04/11.
-  final dia2 = DateTime(2026, 11, 2, 15, 0);
+  final dia2 = DateTime.utc(2026, 11, 2, 18, 0);
 
   group('fonte dos dados', () {
     test('todas as requisições falham por rede → mock "sem conexão"', () async {
@@ -89,7 +87,7 @@ void main() {
       // Todos os jogos da fixture são de 02 e 03/11; "hoje" é 10/11.
       final repo = criarRepositorio(
         ClienteFalso({}, padrao: encerrados),
-        agora: DateTime(2026, 11, 10, 12),
+        agora: DateTime.utc(2026, 11, 10, 15),
       );
       await repo.carregar();
       expect(repo.fonte, FonteDados.mock);
@@ -130,7 +128,7 @@ void main() {
         // 03/11 (entram).
         final repo = criarRepositorio(
           ClienteFalso({'20261102': encerrados}, padrao: vazio),
-          agora: DateTime(2026, 11, 3, 12),
+          agora: DateTime.utc(2026, 11, 3, 15),
         );
         await repo.carregar();
 
@@ -140,8 +138,37 @@ void main() {
           unorderedEquals(['401909919', '401909920', '401909921']),
         );
       },
-      skip: foraDeBrasilia ? 'a máquina não está no fuso de Brasília' : false,
     );
+
+    test('"hoje" vira à meia-noite de Brasília, não à de UTC', () async {
+      // 03/11 à 1h em UTC ainda é 02/11 às 22h em Brasília: os 12 jogos de
+      // 02/11 são de hoje e os 3 da madrugada de 03/11 são de amanhã.
+      final repo = criarRepositorio(
+        ClienteFalso({'20261102': encerrados}, padrao: vazio),
+        agora: DateTime.utc(2026, 11, 3, 1),
+      );
+      await repo.carregar();
+
+      final dias = repo.jogos.map(
+        (j) => formatarDia(j.dataHora, agora: repo.agora()),
+      );
+      expect(dias.where((d) => d == 'Hoje'), hasLength(12));
+      expect(dias.where((d) => d == 'Amanhã'), hasLength(3));
+    });
+
+    test('os horários do mock são de Brasília', () async {
+      final repo = criarRepositorio(
+        ClienteFalso({}, padrao: semRede),
+        // 03/11 à 1h em UTC ainda é 02/11 em Brasília.
+        agora: DateTime.utc(2026, 11, 3, 1),
+      );
+      await repo.carregar();
+
+      final primeiro = repo.jogos.first.dataHora;
+      expect(formatarHora(primeiro), '21h30');
+      expect(formatarDia(primeiro, agora: repo.agora()), 'Hoje');
+      expect(primeiro, DateTime.utc(2026, 11, 3, 0, 30));
+    });
 
     test('FONTE_DADOS=mock usa o mock sem consultar a ESPN', () async {
       final cliente = ClienteFalso({}, padrao: encerrados);

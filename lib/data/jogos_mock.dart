@@ -1,4 +1,5 @@
 import '../models/jogo.dart';
+import '../utils/datas.dart';
 
 /// Logo do time na CDN da ESPN (mesmo endereço que a API devolve).
 String _logo(String codigoEspn) =>
@@ -9,8 +10,9 @@ String _logo(String codigoEspn) =>
 /// As datas são relativas a [agora] (hoje, amanhã e depois de amanhã), para
 /// que o fallback sempre pareça atual. Os horários são de Brasília.
 List<Jogo> gerarJogosMock(DateTime agora) {
+  final hoje = apenasDia(agora);
   DateTime em(int diasAFrente, int hora, int minuto) =>
-      DateTime(agora.year, agora.month, agora.day + diasAFrente, hora, minuto);
+      hoje.add(Duration(days: diasAFrente, hours: hora, minutes: minuto));
 
   return [
     Jogo(

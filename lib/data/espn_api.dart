@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../models/jogo.dart';
+import '../utils/datas.dart';
 
 /// Cliente da API pública (não oficial) do scoreboard da NBA na ESPN.
 /// Os caminhos de chave usados aqui estão documentados em
@@ -28,10 +29,24 @@ class EspnApi {
 
   /// Dias consultados: de ontem até depois de amanhã. "Ontem" entra porque
   /// jogos tarde nos EUA caem na madrugada do dia seguinte no Brasil.
-  static List<DateTime> diasParaConsultar(DateTime agora) => [
-    for (var i = -1; i <= 2; i++)
-      DateTime(agora.year, agora.month, agora.day + i),
-  ];
+  static List<DateTime> diasParaConsultar(DateTime agora) {
+    final hoje = emBrasilia(agora);
+    return [
+      for (var i = -1; i <= 2; i++)
+        DateTime(hoje.year, hoje.month, hoje.day + i),
+    ];
+  }
+
+  /// Dias americanos que cobrem [periodo]: do dia anterior ao início até o
+  /// fim, porque o jogo da madrugada no Brasil é do dia anterior nos EUA.
+  static List<DateTime> diasDoPeriodo(Periodo periodo) {
+    final inicio = emBrasilia(periodo.inicio);
+    final duracao = periodo.fim.difference(periodo.inicio).inDays;
+    return [
+      for (var i = -1; i <= duracao; i++)
+        DateTime(inicio.year, inicio.month, inicio.day + i),
+    ];
+  }
 
   /// Busca os [dias] em paralelo. Cada dia vira um [RespostaDia]; uma falha
   /// (exceção, timeout, status ≠ 200 ou JSON inválido) não derruba os outros.
@@ -126,7 +141,7 @@ Jogo? _parseEvento(Object? dado) {
     visitante: nomeVisitante,
     siglaMandante: _texto(timeMandante?['abbreviation']),
     siglaVisitante: _texto(timeVisitante?['abbreviation']),
-    dataHora: dataUtc.toLocal(),
+    dataHora: dataUtc,
     arena: _texto(local?['fullName']) ?? '',
     cidade: _texto(_mapa(local?['address'])?['city']) ?? '',
     status: switch (estado) {

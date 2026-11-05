@@ -7,6 +7,9 @@ import 'jogos_mock.dart';
 /// demonstração (testes e demonstração do fallback no vídeo).
 const _fonteDadosDefinida = String.fromEnvironment('FONTE_DADOS');
 
+/// Resultado de [JogosRepository.buscarPeriodo].
+typedef RespostaPeriodo = ({List<Jogo> jogos, int falhas, int consultas});
+
 /// Ponto único de acesso aos jogos do app: decide entre ESPN e mock e guarda
 /// o resultado em memória.
 class JogosRepository {
@@ -31,6 +34,8 @@ class JogosRepository {
   final bool forcarMock;
 
   List<Jogo> _jogos = const [];
+  List<Jogo> _jogosDoPeriodo = const [];
+  Periodo? _diasCarregados;
   FonteDados? _fonte;
   String? _motivoFallback;
   Future<void>? _carregamento;
@@ -57,6 +62,35 @@ class JogosRepository {
   /// Busca de novo (pull-to-refresh).
   Future<void> recarregar() => _carregamento = _buscar();
 
+  /// A lista padrão já traz todos os dias de [periodo].
+  bool cobre(Periodo periodo) {
+    final carregados = _diasCarregados;
+    return carregados != null &&
+        !periodo.inicio.isBefore(carregados.inicio) &&
+        !periodo.fim.isAfter(carregados.fim);
+  }
+
+  /// Busca na ESPN os jogos de [periodo], filtrando pela data de Brasília. A
+  /// lista padrão não muda. Falhas contam por dia consultado: quando só
+  /// algumas ocorrem, os jogos dos outros dias vêm normalmente.
+  Future<RespostaPeriodo> buscarPeriodo(Periodo periodo) async {
+    if (forcarMock) return (jogos: const <Jogo>[], falhas: 0, consultas: 0);
+
+    final respostas = await _api.buscarDias(EspnApi.diasDoPeriodo(periodo));
+    final porId = <String, Jogo>{};
+    for (final resposta in respostas) {
+      for (final jogo in resposta.jogos ?? const <Jogo>[]) {
+        if (estaNoPeriodo(jogo.dataHora, periodo)) porId[jogo.id] = jogo;
+      }
+    }
+    _jogosDoPeriodo = _ordenados(porId.values);
+    return (
+      jogos: _jogosDoPeriodo,
+      falhas: respostas.where((r) => !r.sucesso).length,
+      consultas: respostas.length,
+    );
+  }
+
   /// Procura um jogo pelo ID, esperando o carregamento se ele ainda não
   /// aconteceu (caso do app aberto pelo toque na notificação).
   ///
@@ -64,7 +98,8 @@ class JogosRepository {
   /// uma notificação de teste com ID mock funcione sempre.
   Future<Jogo?> buscarPorId(String id) async {
     await carregar();
-    for (final jogo in _jogos) {
+    // O card aberto pode ser de um período fora da lista padrão.
+    for (final jogo in [..._jogos, ..._jogosDoPeriodo]) {
       if (jogo.id == id) return jogo;
     }
     if (id.startsWith('mock-')) {
@@ -77,6 +112,12 @@ class JogosRepository {
 
   Future<void> _buscar() async {
     final agora = _agora();
+    final hoje = apenasDia(agora);
+    final limite = hoje.add(const Duration(days: diasExibidos));
+    _diasCarregados = (
+      inicio: hoje,
+      fim: limite.subtract(const Duration(days: 1)),
+    );
     if (forcarMock) {
       _usarMock(agora, motivo: null);
       return;
@@ -97,10 +138,8 @@ class JogosRepository {
       return;
     }
 
-    // Filtra pela data LOCAL: um jogo do "ontem" americano pode cair na
-    // madrugada de hoje no Brasil.
-    final hoje = apenasDia(agora);
-    final limite = DateTime(hoje.year, hoje.month, hoje.day + diasExibidos);
+    // Filtra pela data de BRASÍLIA: um jogo do "ontem" americano pode cair
+    // na madrugada de hoje no Brasil.
     final porId = <String, Jogo>{};
     for (final resposta in respostas) {
       for (final jogo in resposta.jogos ?? const <Jogo>[]) {

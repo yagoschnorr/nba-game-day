@@ -10,7 +10,8 @@ class Jogo {
   final String? siglaMandante;
   final String? siglaVisitante;
 
-  /// Sempre em horário local do aparelho.
+  /// Instante do início do jogo. Para exibir, use as funções de
+  /// utils/datas.dart, que convertem para o horário de Brasília.
   final DateTime dataHora;
   final String arena;
   final String cidade;
