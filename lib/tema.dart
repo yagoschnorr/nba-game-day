@@ -89,6 +89,12 @@ ThemeData criarTema([Brightness brilho = Brightness.light]) {
       color: CoresNba.vermelho,
     ),
     listTileTheme: ListTileThemeData(iconColor: destaque),
+    datePickerTheme: const DatePickerThemeData(
+      rangePickerHeaderBackgroundColor: CoresNba.azul,
+      rangePickerHeaderForegroundColor: CoresNba.branco,
+      // O texto "Data de início – Data de término" não cabe no tamanho padrão.
+      rangePickerHeaderHeadlineStyle: TextStyle(fontSize: 20),
+    ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: CoresNba.vermelho,

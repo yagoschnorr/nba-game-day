@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'data/jogos_repository.dart';
 import 'screens/detalhes_jogo_screen.dart';
@@ -31,6 +32,10 @@ class NbaGameDayApp extends StatelessWidget {
       builder: (context, modo, _) => MaterialApp(
         title: 'NBA Game Day',
         debugShowCheckedModeBanner: false,
+        // Deixa o calendário do filtro de datas em português.
+        locale: const Locale('pt', 'BR'),
+        supportedLocales: const [Locale('pt', 'BR')],
+        localizationsDelegates: GlobalMaterialLocalizations.delegates,
         navigatorKey: navigatorKey,
         scaffoldMessengerKey: scaffoldMessengerKey,
         theme: criarTema(),
