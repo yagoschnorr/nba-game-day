@@ -39,7 +39,7 @@ O botão de sol/lua na AppBar da Home alterna entre os **modos claro e escuro**.
 - **Detalhes:** cabeçalho com gradiente nas cores dos times (mesmo visual do banner da notificação), data e horário, arena, cidade, status, placar e prévia (só nos dados de demonstração). Tem estados de carregamento e "Jogo não encontrado".
 - **Painel de demonstração** (ícone 🔧 na AppBar): token FCM copiável, status da permissão, fonte dos dados e os jogos de hoje com o **ID copiável**, usado na Notificação 3.
 
-**Logos dos times:** a Home e os detalhes mostram a logo de cada time, usando a URL que a própria API da ESPN devolve (`team.logo`). As logos são marcas registradas dos times: por isso são carregadas da CDN da ESPN quando o app roda, **não ficam salvas no repositório**, e os banners das notificações continuam só com texto e cores. Sem conexão, aparece um círculo com a sigla do time no lugar. A logo da NBA no título segue a mesma regra: vem da CDN da ESPN e, sem conexão, é trocada pelo texto "NBA".
+**Logos dos times:** a Home e os detalhes mostram a logo de cada time, usando a URL que a própria API da ESPN devolve (`team.logo`). As logos são marcas registradas dos times: por isso, no app, são carregadas da CDN da ESPN quando ele roda, em vez de ficarem nos arquivos do projeto. A exceção é o banner do Jogo da Noite, que traz as logos do confronto e fica em `assets/banners/`, porque o FCM precisa de uma imagem pronta. Sem conexão, aparece um círculo com a sigla do time no lugar. A logo da NBA no título segue a mesma regra: vem da CDN da ESPN e, sem conexão, é trocada pelo texto "NBA".
 
 ## Como as notificações funcionam no app
 
@@ -104,16 +104,18 @@ Caminho: **Messaging → Nova campanha → Notificações** → preencher → **
 
 ## Gerando banners (Desafio 2)
 
-O script [`tools/gerar_banner.py`](tools/gerar_banner.py) usa Pillow (`pip install pillow`). Ele gera um PNG de 1024×512 com o mesmo desenho do cabeçalho dos detalhes, só com texto e cores, sem logos. O script **falha se o arquivo passar de 1 MB**, o limite do FCM para imagens.
+O script [`tools/gerar_banner.py`](tools/gerar_banner.py) usa Pillow (`pip install pillow`). Ele gera um PNG de 1024×512 com o mesmo desenho do cabeçalho dos detalhes, incluindo as logos, que podem ser URLs da CDN da ESPN ou arquivos locais. O script **falha se o arquivo passar de 1 MB**, o limite do FCM para imagens.
 
 ```bash
 python3 tools/gerar_banner.py --mandante "Boston Celtics" --visitante "Los Angeles Lakers" \
   --quando "Hoje, 21h30" --cor-mandante "#007A33" --cor-visitante "#552583" \
   --sigla-mandante BOS --sigla-visitante LAL \
+  --logo-mandante https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/bos.png \
+  --logo-visitante https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/lal.png \
   --saida assets/banners/jogo_da_noite.png
 ```
 
-Cores e siglas são opcionais. Sem as cores dos times, o banner usa o azul e o vermelho da NBA, como o cabeçalho do app. A imagem precisa estar num **repositório público** para o FCM baixá-la: faça commit e push e teste a URL `raw.githubusercontent.com` no navegador do celular antes de enviar.
+Cores, siglas e logos são opcionais. Sem as cores dos times, o banner usa o azul e o vermelho da NBA, como o cabeçalho do app. A imagem precisa estar num **repositório público** para o FCM baixá-la: faça commit e push e teste a URL `raw.githubusercontent.com` no navegador do celular antes de enviar.
 
 ## Roteiro do dia da gravação
 
