@@ -10,6 +10,8 @@ GET https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?date
 
 - Não exige chave. Responde `200` com JSON, inclusive em dia sem jogos.
 - `dates` é o **dia americano** (horário de Nova York), e não o dia em UTC nem o de Brasília. Exemplo: `dates=20261102` traz jogos com `date` entre `2026-11-03T00:00Z` e `2026-11-03T03:00Z`.
+- **Não aceita intervalo:** `dates=20261105-20261112` responde `400` (`"Failed to get events endpoint."`), com ou sem `limit`. Por isso, o filtro de período do app faz uma requisição por dia.
+- **Não traz a conferência dos times:** nem em `c.team` nem em `comp`, onde `conferenceCompetition` só indica se é um jogo de conferência. A divisão usada em `lib/models/conferencia.dart` foi conferida em 05/11/2026 em `site.api.espn.com/apis/v2/sports/basketball/nba/standings`, que tem os nomes iguais a `c.team.displayName`.
 
 ## Fixtures salvas em `test/fixtures/`
 
@@ -29,7 +31,7 @@ Raiz: `{ "leagues": [...], "events": [...], "provider": {...} }`. Abaixo, `comp`
 |---|---|---|---|
 | lista de eventos | `events` | `[...]` | Lista vazia em dia sem jogos. |
 | `id` | `event.id` | `"401909907"` | String numérica. Igual a `comp.id`. |
-| `dataHora` | `event.date` | `"2026-11-03T00:00Z"` | UTC, **sem segundos**. Igual a `comp.date` em todos os eventos observados. Converter com `.toLocal()`. |
+| `dataHora` | `event.date` | `"2026-11-03T00:00Z"` | UTC, **sem segundos**. Igual a `comp.date` em todos os eventos observados. O app guarda esse instante e converte para Brasília ao exibir (`lib/utils/datas.dart`). |
 | mandante / visitante | `c.homeAway` | `"home"` / `"away"` | Identifica cada lado. **Não confiar na ordem da lista.** |
 | nome do time | `c.team.displayName` | `"Cleveland Cavaliers"` | |
 | sigla | `c.team.abbreviation` | `"CLE"`, `"UTAH"`, `"GS"` | Nem sempre tem 3 letras. |
@@ -56,7 +58,7 @@ O app decide pelo `state`, que só tem esses três valores, e não pelo `name`, 
 2. **Campos essenciais:** `event.id`, `event.date` e os dois competidores com `homeAway` e `team.displayName`. Sem algum deles, o evento é descartado.
 3. **Campos opcionais:** siglas, cores, logos, arena, cidade e placar. Viram `null` quando ausentes (ou string vazia, no caso de arena e cidade, que não são anuláveis no modelo). Nas fixtures, todos os 29 eventos têm todos esses campos.
 4. **Cores iguais:** há confrontos em que os dois times têm a mesma `color` (ex.: PHI @ DET, ambos `1d428a`). Nesse caso, usar a `alternateColor` do visitante, para o gradiente do cabeçalho não ficar chapado.
-5. **Formato da data:** `DateTime.parse` do Dart aceita `"2026-11-03T03:00Z"` sem segundos e devolve UTC (conferido no Dart 3.13: `.toLocal()` dá 03/11 às 0h em Brasília).
+5. **Formato da data:** `DateTime.parse` do Dart aceita `"2026-11-03T03:00Z"` sem segundos e devolve UTC (conferido no Dart 3.13). O app não usa `.toLocal()`, que depende do fuso do aparelho: `emBrasilia()` subtrai 3 horas e dá 03/11 às 0h.
 
 ## Exemplos de conversão para conferir à mão
 
@@ -69,4 +71,4 @@ Em novembro, Nova York está em EST (UTC−5) e Brasília em UTC−3, então a d
 | MIA @ LAL (`401909921`) | `2026-11-03T03:00Z` | 02/11, 22h | **03/11, 0h** (madrugada do dia seguinte) |
 | PHI @ DET (`401909922`) | `2026-11-05T00:00Z` | 04/11, 19h | **04/11, 21h** |
 
-O caso MIA @ LAL é o motivo de o app pedir também a data de "ontem" e filtrar pela data local: o jogo pertence ao dia americano 02/11, mas no Brasil ele acontece em 03/11.
+O caso MIA @ LAL é o motivo de o app pedir também a data de "ontem" e filtrar pela data de Brasília: o jogo pertence ao dia americano 02/11, mas no Brasil ele acontece em 03/11.

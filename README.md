@@ -6,7 +6,7 @@ Atividade Prática — Notificações Push · Programação para Dispositivos M�
 
 ## Finalidade
 
-Ajudar o torcedor brasileiro a não perder jogos da NBA. Os jogos acontecem à noite em horários variados e o fuso horário confunde. Por isso o app mostra a agenda de hoje, amanhã e depois de amanhã já convertida para o fuso do aparelho, e as notificações avisam na hora certa, sem o usuário precisar abrir o app.
+Ajudar o torcedor brasileiro a não perder jogos da NBA. Os jogos acontecem à noite em horários variados e o fuso horário confunde. Por isso o app mostra a agenda de hoje, amanhã e depois de amanhã já convertida para o horário de Brasília, qualquer que seja o fuso do aparelho, e as notificações avisam na hora certa, sem o usuário precisar abrir o app.
 
 | Desafio | Notificação | Por que existe |
 |---|---|---|
@@ -17,7 +17,7 @@ Ajudar o torcedor brasileiro a não perder jogos da NBA. Os jogos acontecem à n
 ## Fonte dos dados
 
 - **Principal: API pública da ESPN** (`site.api.espn.com/.../nba/scoreboard?dates=AAAAMMDD`). Não é oficial nem documentada, mas é a usada pelo próprio site da ESPN e não exige chave. O formato observado está em [`docs/espn_formato.md`](docs/espn_formato.md).
-  - O app consulta de ontem até depois de amanhã e filtra pela **data local**. Jogos tarde nos EUA pertencem ao "dia americano" anterior, mas no Brasil caem na madrugada seguinte.
+  - O app consulta de ontem até depois de amanhã e filtra pela **data de Brasília**. Jogos tarde nos EUA pertencem ao "dia americano" anterior, mas no Brasil caem na madrugada seguinte.
   - O parser é defensivo: um evento incompleto é descartado sem derrubar a lista.
 - **Fallback: dados de demonstração** embutidos no código (`lib/data/jogos_mock.dart`), com datas relativas a hoje. São usados quando:
   - todas as requisições falham → aviso "Sem conexão com a ESPN";
@@ -32,7 +32,10 @@ O título da Home usa a logo da NBA seguida de "GAME DAY". A fonte oficial da NB
 
 O botão de sol/lua na AppBar da Home alterna entre os **modos claro e escuro**. No escuro, o fundo é preto, os títulos, ícones e textos vermelhos usam tons mais claros para manter a leitura e as logos ficam em círculos brancos. A escolha não é salva: ao reabrir, o app volta ao modo claro.
 
-- **Home:** jogos agrupados por dia ("Hoje", "Amanhã", data do 3º dia), com horário local, arena, status e placar. Inclui puxar para atualizar e um aviso quando os dados são de demonstração.
+- **Home:** jogos agrupados por dia ("Hoje", "Amanhã", data do 3º dia), com horário de Brasília, arena, status e placar. Inclui puxar para atualizar e um aviso quando os dados são de demonstração. A **barra de busca** encontra jogos pelo nome ou sigla do time, e o botão ao lado dela abre o **painel de filtros**:
+  - **Data:** atalhos (Hoje, Amanhã, Próximos 7 dias) ou um calendário para escolher qualquer período de até 31 dias, passado ou futuro. Fora dos 3 dias da lista padrão, o app busca esses dias na ESPN, um por requisição, porque a API não aceita intervalo de datas.
+  - **Conferência:** Leste, Oeste (jogos com pelo menos um time da conferência) ou Leste x Oeste (só confrontos entre as duas). A API do scoreboard não traz a conferência, então os times ficam em `lib/models/conferencia.dart`.
+  - **Horário e times:** tirados dos jogos do período. Os horários são só os dos jogos que ainda vão começar, exceto em períodos todos no passado, que mostram todos. A lista continua trazendo também os jogos que já aconteceram. Filtros diferentes valem juntos; dentro de um mesmo filtro, basta combinar com um dos itens marcados.
 - **Detalhes:** cabeçalho com gradiente nas cores dos times (mesmo visual do banner da notificação), data e horário, arena, cidade, status, placar e prévia (só nos dados de demonstração). Tem estados de carregamento e "Jogo não encontrado".
 - **Painel de demonstração** (ícone 🔧 na AppBar): token FCM copiável, status da permissão, fonte dos dados e os jogos de hoje com o **ID copiável**, usado na Notificação 3.
 
@@ -134,16 +137,17 @@ lib/
 ├── app.dart                       # MaterialApp, navigatorKey, rotas "/" e "/jogo"
 ├── tema.dart                      # cores oficiais da NBA e temas claro e escuro
 ├── firebase_options.dart          # gerado pelo flutterfire configure
-├── models/jogo.dart
+├── models/                        # jogo, filtro_jogos (busca e filtros da Home), conferencia
 ├── data/
 │   ├── espn_api.dart              # requisições e parser da ESPN
 │   ├── jogos_mock.dart            # dados de demonstração (fallback)
-│   └── jogos_repository.dart      # escolha da fonte, cache, buscarPorId
+│   ├── jogos_repository.dart      # escolha da fonte, cache, buscarPorId, buscarPeriodo
+│   └── busca_jogos.dart           # estado da busca da Home e consulta por período
 ├── services/notification_service.dart
 ├── screens/                       # home_screen, detalhes_jogo_screen
-├── widgets/                       # jogo_card, cabecalho_confronto, logo_time, titulo_app, demo_sheet
+├── widgets/                       # jogo_card, cabecalho_confronto, logo_time, titulo_app, demo_sheet, filtros_jogos
 └── utils/datas.dart               # datas em português, sem o pacote intl
-test/                              # parser e repositório, com respostas reais da ESPN
+test/                              # parser e repositório (com respostas reais da ESPN), datas, filtros e Home
 tools/gerar_banner.py
 docs/espn_formato.md
 assets/banners/
