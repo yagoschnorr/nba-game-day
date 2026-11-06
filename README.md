@@ -55,6 +55,7 @@ Tudo fica em [`lib/services/notification_service.dart`](lib/services/notificatio
 - **Mesma rota em todos os casos:** a navegação usa a rota `/jogo`, a mesma do toque no card da Home. A tela de detalhes espera o carregamento dos jogos quando o app é aberto pela notificação.
 - **Dados personalizados:** a chave é **`jogo_id`**, lida com `trim()`.
 - **Toques repetidos:** são ignorados pelo `messageId`.
+- **Aviso no topo da tela:** o canal que o FCM cria sozinho tem importância padrão e só mostra o ícone na barra. Por isso, `MainActivity.kt` cria o canal `jogos_nba`, de importância alta, e o `AndroidManifest.xml` o define como padrão. O canal passa a existir na primeira vez que o app é aberto.
 - **Token FCM:** o app usa `getToken()`. No `firebase_messaging` 17 ele está marcado como obsoleto em favor de `register()`, mas a API nova devolve um Firebase Installation ID, e não o token que o Firebase Console pede em "Enviar mensagem de teste".
 
 ## Como rodar
@@ -101,35 +102,6 @@ Caminho: **Messaging → Nova campanha → Notificações** → preencher → **
 - **Texto (modelo):** `<Time A> x <Time B> às <hora>. Toque para ver os detalhes do jogo.`
 - **Opções adicionais → Dados personalizados:** chave `jogo_id`, valor = ID copiado do painel 🔧.
 - **Fallback:** texto `Nuggets x Thunder às 23h. Toque para ver os detalhes do jogo.`, `jogo_id = mock-3`. IDs `mock-*` funcionam mesmo com a ESPN ativa.
-
-## Gerando banners (Desafio 2)
-
-O script [`tools/gerar_banner.py`](tools/gerar_banner.py) usa Pillow (`pip install pillow`). Ele gera um PNG de 1024×512 com o mesmo desenho do cabeçalho dos detalhes, incluindo as logos, que podem ser URLs da CDN da ESPN ou arquivos locais. O script **falha se o arquivo passar de 1 MB**, o limite do FCM para imagens.
-
-```bash
-python3 tools/gerar_banner.py --mandante "Boston Celtics" --visitante "Los Angeles Lakers" \
-  --quando "Hoje, 21h30" --cor-mandante "#007A33" --cor-visitante "#552583" \
-  --sigla-mandante BOS --sigla-visitante LAL \
-  --logo-mandante https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/bos.png \
-  --logo-visitante https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/lal.png \
-  --saida assets/banners/jogo_da_noite.png
-```
-
-Cores, siglas e logos são opcionais. Sem as cores dos times, o banner usa o azul e o vermelho da NBA, como o cabeçalho do app. A imagem precisa estar num **repositório público** para o FCM baixá-la: faça commit e push e teste a URL `raw.githubusercontent.com` no navegador do celular antes de enviar.
-
-## Roteiro do dia da gravação
-
-Como os jogos mudam todo dia, os textos são preenchidos na hora:
-
-1. Abrir o app e conferir no painel 🔧 que a fonte é **ESPN**.
-2. Escolher o Jogo da Noite (Notificação 2) e um jogo para a Notificação 3; pode ser o mesmo.
-3. Gerar o banner `jogo_da_noite.png` com os times, as cores e o horário escolhidos, fazer commit e push e testar a URL no celular.
-4. Copiar no painel 🔧 o ID do jogo da Notificação 3.
-5. Preencher os modelos acima.
-
-Se não houver jogos no dia ou a ESPN estiver fora, o app entra no fallback e usam-se as versões **fallback** de cada notificação.
-
-Ordem sugerida no vídeo: finalidade e decisões → Desafio 1 (app em segundo plano) → Desafio 2 (expandir a notificação para mostrar o banner e abrir o jogo no app) → Desafio 3 em segundo plano → Desafio 3 com o app fechado (removido dos recentes, sem "Forçar parada") → extras (SnackBar com o app aberto, fallback em modo avião) → trecho do `notification_service.dart`.
 
 ## Estrutura
 
